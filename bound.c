@@ -300,6 +300,17 @@ void aabb_fit( aabb_t *aabb, const float3 *ps, size_t nps, float pad, int calc_p
 
 }
 
+void aabb_make( aabb_t *aabb, const float3 p, const float3 halfsize, float pad, int calc_ps ){
+  float3 min, max;
+  f3copy( min, p );
+  f3copy( max, p );
+  for( int32 i = 0; i < 3; i++ ){
+    min[i] -= halfsize[i];
+    max[i] += halfsize[i];
+  }
+  aabb_set( aabb, min, max, pad, calc_ps );
+}
+
 void aabb_make_sat( const aabb_t *aabb, sat_t *sat, int32 second ){
   float hdist = 0.0f;
   for( int32 i = 0; i < 3; i++ )

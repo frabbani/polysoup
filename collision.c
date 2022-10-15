@@ -833,12 +833,50 @@ int32 coll_geom_load( coll_geom_t *geom, const char objfile[], int32 term ){
   return coll_geom_finalize( geom );
 }
 
-int32 coll_geom_load_grid( const coll_geom_t *geom, bpcd_grid_t *grid, float cellsize ){
+int32 coll_geom_load_bpcd_grid( const coll_geom_t *geom, bpcd_grid_t *grid, float cellsize ){
   if( !geom->_finalized ){
     printf( "%s:error - invalid geometry\n", __FUNCTION__ );
     return 0;
   }
   bpcd_grid_init( grid, geom->aabb.min, geom->aabb.max, cellsize, 0 );
+
+  array_const_iter_t kit = array_const_iter_init( &geom->faces.array );
+  while( array_iterate_const(&kit) ){
+    const coll_face_t *face = kit.data;
+    if( face->index != kit.i ){
+      printf( "%s:warning - invalid face no. %zu (id=%zu)\n", __FUNCTION__, kit.i, face->index );
+      continue;
+    }
+    float3 p, h;
+    f3copy( p, face->ps[0] );
+    f3add ( p, face->ps[1] );
+    f3add ( p, face->ps[2] );
+    f3muls( p, 1.0f/3.0f );
+
+    for( size_t i = 0; i < 3; i++ ){
+      float min, mid, max;
+      min = face->ps[0][i];
+      mid = face->ps[1][i];
+      max = face->ps[2][i];
+      SORT3( min, mid, max );
+      h[i] = ( max - min ) / 2.0f;
+    }
+
+    bpcd_grid_sector_t sector = bpcd_grid_sector_make( grid, p, h );
+    for( size_t l = sector.ls[0]; l <= sector.ls[1]; l++ ){
+      for( size_t r = sector.rs[0]; r <= sector.rs[1]; r++ ){
+        for( size_t c = sector.cs[0]; c <= sector.cs[1]; c++ ){
+          aabb_t aabb;
+          bpcd_grid_aabb_for_cell( grid, l, r, c, &aabb );
+          if( coll_face_aabb_hit( face, &aabb )){
+            bpcd_grid_cell_t *cell = bpcd_grid_add_cell( grid, l, r, c );
+            bpcd_grid_cell_add( cell, face->index );
+          }
+        }
+      }
+    }
+
+  }
   return 1;
 }
 

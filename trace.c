@@ -366,9 +366,10 @@ void coll_geom_trace_test_sphere( coll_geom_trace_test_t *test, sphere_t sphere 
     for( size_t l = sector.ls[0]; l <= sector.ls[1]; l++ )
       for( size_t r = sector.rs[0]; r <= sector.rs[1]; r++ )
         for( size_t c = sector.cs[0]; c <= sector.cs[1]; c++ ){
-          bpcd_grid_cell_t *cell = test->grid->levs[l].rows[r].cols[c].cell;
-          if( !cell )
+          size_t no = test->grid->levs[l].rows[r].cols[c].cell;
+          if( -1 ==  no )
             continue;
+          const bpcd_grid_cell_t *cell = array_data_ro( &test->grid->cells, no );
           array_const_indirect_iter_t kiit = array_const_indirect_iter_init( &test->geom->faces.array,
                                                                              cell->indices.elems,
                                                                              cell->indices.size );
