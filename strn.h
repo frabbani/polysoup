@@ -7,9 +7,9 @@
 typedef str##len##_t str##len;  \
   \
   \
-extern str##len str##len##_( const char *str );  \
-extern str##len str##len##cat( str##len s, const char *str );  \
-extern str##len str##len##fmt( const char* format, ... ); \
+str##len str##len##_( const char *str );  \
+str##len str##len##cat( str##len s, const char *str );  \
+str##len str##len##fmt( const char* format, ... ); \
 
 #define STRNFUNC( len )    \
 \

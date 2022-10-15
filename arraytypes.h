@@ -15,13 +15,13 @@ typedef struct name##array_s{ \
 }name##array_t; \
 \
 \
-extern INLINE int32 isoftype_##name##array( const array_t *array ); \
-extern INLINE name##array_t  name##array_make( size_t prelim_limit );\
-extern INLINE name##array_t *name##array_init( size_t prelim_limit );\
-extern INLINE type  name##array_add0( name##array_t *array, type elem, const char func[], int32 line );\
-extern INLINE type *name##array_add1( name##array_t *array, const type *elem, const char func[], int32 line );\
-extern INLINE void  name##array_term( name##array_t *array );\
-extern INLINE void  name##array_free( name##array_t **array );\
+INLINE int32 isoftype_##name##array( const array_t *array ); \
+INLINE name##array_t  name##array_make( size_t prelim_limit );\
+INLINE name##array_t *name##array_init( size_t prelim_limit );\
+INLINE type  name##array_add0( name##array_t *array, type elem, const char func[], int32 line );\
+INLINE type *name##array_add1( name##array_t *array, const type *elem, const char func[], int32 line );\
+INLINE void  name##array_term( name##array_t *array );\
+INLINE void  name##array_free( name##array_t **array );\
 
 
 #define ARRAYFUNC( name, type ) \
