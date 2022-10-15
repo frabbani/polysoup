@@ -5,12 +5,16 @@
     #include <polysoup/collision.h>
 
     // variables
+    bpcd_grid_t grid;
     coll_geom_t geom;
     coll_geom_trace_test_t test;
 
     // load geometry from OBJ file
     coll_geom_load( &geom, "test.obj", 0 );
 
+    // load BPCD (Broad Phase Collision Detection) grid
+    coll_geom_load_bpcd_grid( &geom, &grid, 2.0f );
+    
     // initialize trace test
     coll_geom_trace_test_init( &test, &geom, COLL_GEOM_TRACE_SPHERE, 0 );
 
