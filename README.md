@@ -13,7 +13,7 @@
     coll_geom_load( &geom, "test.obj", 0 );
 
     // load BPCD (Broad Phase Collision Detection) grid
-    coll_geom_load_bpcd_grid( &geom, &grid, 2.0f );
+    coll_geom_load_bpcd_grid( &geom, &grid, GRID_CELL_SIZE );
     
     // initialize trace test
     coll_geom_trace_test_init( &test, &geom, COLL_GEOM_TRACE_SPHERE, 0 );
