@@ -2,7 +2,7 @@
 
  Usage:
 
-    #include <polysoup/collision.h>
+    #include <polysoup/trace.h>
 
     // variables
     bpcd_grid_t grid;
