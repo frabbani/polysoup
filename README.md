@@ -1,4 +1,4 @@
-# PolySoup - bounding spheroid traversal in a Polygon soup environment
+# PolySoup - bounding sphere/spheroid traversal in a Polygon soup environment
 
  Usage:
 
