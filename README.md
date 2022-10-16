@@ -15,7 +15,8 @@
     // load BPCD (Broad Phase Collision Detection) grid
     coll_geom_load_bpcd_grid( &geom, &grid, GRID_CELL_SIZE );
     
-    // initialize trace test
+    // initialize trace test - specify NULL for grid to perform full culling
+    // (if polygon count is low)
     coll_geom_trace_test_init( &test, &geom, &grid, COLL_GEOM_TRACE_SPHERE, 0 );
 
     //given two points p1 and p2, and a vector v going from p1 to p2 
