@@ -556,6 +556,7 @@ int32 coll_geom_finalize( coll_geom_t *geom ){
         coll_vert_t *vert = &geom->verts.elems[k];
         if( f3eqt( f->ps[j], vert->p, tol ) ){
           coll_vert_add_feat( vert, 0, f->index );
+          f->vertindices[j] = vert->index;
           break;
         }
       }

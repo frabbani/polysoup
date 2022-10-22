@@ -38,7 +38,13 @@ int32 INLINE dirty_tracker_isdirty( dirty_tracker_t *tracker, size_t index, int3
   return 0;
 }
 
-int32 INLINE dirty_tracker_isclean( const dirty_tracker_t *tracker, size_t index ){
+int32 INLINE dirty_tracker_isdirty2( const dirty_tracker_t *tracker, size_t index ){
+  if( tracker->testbools && index < tracker->size )
+    return tracker->testbools[index] < tracker->bool;
+  return 0;
+}
+
+int32 INLINE dirty_tracker_isclean ( const dirty_tracker_t *tracker, size_t index ){
   if( tracker->testbools && index < tracker->size )
     return tracker->testbools[index] == tracker->bool;
   return 0;
