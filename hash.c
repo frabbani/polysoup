@@ -49,67 +49,31 @@ void hashmap_reset( hashmap_t *map ){
   map->bool++;
 }
 
-//NOTE: ignore dups
-static int32 hashmap_add_with_given_hash( hashmap_t *map, size_t val, size_t index ){
-  if( map->test[index] != map->bool ){
-    map->hashes[index].val = val;
-    map->hashes[index].next = NULL;
-    map->test  [index] = map->bool;
-    return 0;
-  }
 
-
-  hash_t *hash = &map->hashes[index];
-  int32   dup  = 0;
-
-  while( hash ){
-    if( hash->val == val ){
-      dup++;
-      break;
-    }
-    hash = hash->next;
-  }
-  if( dup )
-    return 0;
-
-  //collision
-  hash->next = hashpool_new( val );
-  return 1;
-}
-
-
-//NOTE: does not check for dups
 int32 hashmap_add( hashmap_t *map, size_t val ){
   size_t i = hash( val, map->maxval );
   if( map->test[i] != map->bool ){
-    map->hashes[i].val = val;
+    map->hashes[i].val  = val;
     map->hashes[i].next = NULL;
-    map->test  [i] = map->bool;
+    map->test[i] = map->bool;
     return 0;
   }
-
   hash_t *hash = &map->hashes[i];
-  hash_t *next = hash->next;
 
-  int32   dup  = 0;
-  while( next ){
-    if( next->val == val ){
-      dup++;
-      break;
-    }
-    hash = next;
-    next = next->next;
-  }
-  if( dup )
+  if( hash->val == val )
     return 0;
+  while( hash->next ){
+    if( hash->next->val == val )
+      return 0;
+    hash = hash->next;
+  }
 
-  //collision
   hash->next = hashpool_new( val );
   return 1;
 
 }
 
-
+/*
 int32 hashmap_remove( hashmap_t *map, size_t val ){
   size_t i = hash( val, map->maxval );
   if( map->test[i] != map->bool ) //empty
@@ -142,33 +106,14 @@ int32 hashmap_remove( hashmap_t *map, size_t val ){
 
   return 0;
 }
+*/
 
-int32 hashmap_has( const hashmap_t *map, size_t val ){
+int32 hashmap_found( const hashmap_t *map, size_t val ){
   size_t i = hash( val, map->maxval );
   if( map->test[i] != map->bool ) //empty
     return 0;
-  if( map->hashes[i].val == val )
-    return 1;
 
-  hash_t *hash = map->hashes[i].next;
-  while( hash ){
-    if( hash->val == val )
-      return 1;
-    hash = hash->next;
-  }
-
-  return 0;
-}
-
-int32 hashmap_found( hashmap_t *map, size_t val ){
-  size_t i = hash( val, map->maxval );
-  if( map->test[i] != map->bool ){ //empty
-    return 0;
-  }
-  if( map->hashes[i].val == val )
-    return 1;
-
-  hash_t *hash = map->hashes[i].next;
+  const hash_t *hash = &map->hashes[i];
   while( hash ){
     if( hash->val == val )
       return 1;
