@@ -488,6 +488,7 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
   coll_geom_trace_info_t info;
   memset( &info, 0, sizeof(coll_geom_trace_info_t) );
 
+  coll_geom_trace_test_tracker_reset( &test->tracker, -1 );
   //+++ RESOLVE +++//
 
   //test vertices first, dirty edges and faces if necessary
@@ -504,12 +505,12 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
     }
 
     //dirty all edges (assume we wont need to test)
-    for( size_t j = 0; j < nes; j++ )
-      UNFLAG_EDGE( v->edgeindices[j] >> 1 );
+    //for( size_t j = 0; j < nes; j++ )
+    //  UNFLAG_EDGE( v->edgeindices[j] >> 1 );
 
     //dirty all faces (assume we wont need to test)
-    for( size_t j = 0; j < nfs; j++ )
-      UNFLAG_FACE( v->faceindices[j] );
+    //for( size_t j = 0; j < nfs; j++ )
+    //  UNFLAG_FACE( v->faceindices[j] );
 
     int32 within = 1;
     for( size_t j = 0; j < nes; j++ ){
@@ -536,7 +537,7 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
 
     float ddotn = f3dot( dir, info.n );
     if( ddotn < 0.0f ){
-      if( ddotn > test->penetrating_dist )
+      if( ddotn < test->penetrating_dist )
         test->penetrating_dist = ddotn;
       f3madd( dir, -ddotn * 1.001f, vhits[i].n );
       test->penetrating++;
@@ -546,7 +547,7 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
   //test clean edges next, dirty faces if necessary (assuming wont test)
   for( size_t i = 0; i < numes; i++ ){
     const coll_edge_t *e  = &geom->edges.elems[ eindices[i] ];
-    if( FACE_UNFLAGGED( eindices[i] ) )
+    if( EDGE_FLAGGED( eindices[i] ) )
       continue;
 
     const coll_face_t *f0 = &geom->faces.elems[ e->faceindices[0] ];
@@ -554,8 +555,12 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
     if( e->convex < 0 || NULL == f1 )
       continue;
 
-    UNFLAG_FACE( e->faceindices[0] );
-    UNFLAG_FACE( e->faceindices[1] );
+    //UNFLAG_FACE( e->faceindices[0] );
+    //UNFLAG_FACE( e->faceindices[1] );
+
+    //these faces are tested in the test below, so flag them
+    FLAG_FACE( e->faceindices[0] );
+    FLAG_FACE( e->faceindices[1] );
 
     float3 n = { 0.0f, 0.0f, 0.0f };
     if( e->convex > 0 ){
@@ -602,10 +607,10 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
     }
   }
 
-  //test clean faces last
+  //test faces not flagged last
   for( size_t i = 0; i < numfs; i++ ){
     const coll_face_t *f = &geom->faces.elems[ findices[i] ];
-    if( FACE_UNFLAGGED( findices[i] ) )
+    if( FACE_FLAGGED( findices[i] ) )
       continue;
 
     float ddotn = f3dot( dir, f->plane.n );
