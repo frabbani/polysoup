@@ -52,18 +52,26 @@ ARRAYFUNC( collgeomtrace, coll_geom_trace_info_t );
 ARRAYFUNC( collhit, coll_hitpoint_t );
 
 void coll_geom_trace_test_tracker_term( coll_geom_trace_test_tracker_t *tracker ){
+  /*
   dirty_tracker_term( &tracker->verts );
   dirty_tracker_term( &tracker->edges );
   dirty_tracker_term( &tracker->faces );
+  */
+  //hashmaps have no termination
 }
 
 void coll_geom_trace_test_tracker_init( coll_geom_trace_test_tracker_t *tracker,
                                         size_t vertcount,
                                         size_t edgecount,
                                         size_t facecount ){
+  /*
   dirty_tracker_init( &tracker->verts, vertcount );
   dirty_tracker_init( &tracker->edges, edgecount );
   dirty_tracker_init( &tracker->faces, facecount );
+  */
+  hashmap_init( &tracker->vertsmap, vertcount-1 );
+  hashmap_init( &tracker->edgesmap, edgecount-1 );
+  hashmap_init( &tracker->facesmap, facecount-1 );
 }
 
 void coll_geom_trace_test_term( coll_geom_trace_test_t *test ){
@@ -123,13 +131,25 @@ int32 coll_geom_trace_test_init(
 static INLINE void coll_geom_trace_test_tracker_reset( coll_geom_trace_test_tracker_t *tracker, int32 type ){
   switch( type )
   {
-    case 2: dirty_tracker_next( &tracker->faces ); break;
-    case 1: dirty_tracker_next( &tracker->edges ); break;
-    case 0: dirty_tracker_next( &tracker->verts ); break;
+    case 2:
+      //dirty_tracker_next( &tracker->faces );
+      hashmap_reset( &tracker->facesmap );
+      break;
+    case 1:
+      //dirty_tracker_next( &tracker->edges );
+      hashmap_reset( &tracker->edgesmap );
+      break;
+    case 0:
+      //dirty_tracker_next( &tracker->verts );
+      hashmap_reset( &tracker->vertsmap );
+      break;
     default:
-      dirty_tracker_next( &tracker->faces );
-      dirty_tracker_next( &tracker->edges );
-      dirty_tracker_next( &tracker->verts );
+      //dirty_tracker_next( &tracker->faces );
+      //dirty_tracker_next( &tracker->edges );
+      //dirty_tracker_next( &tracker->verts );
+      hashmap_reset( &tracker->facesmap );
+      hashmap_reset( &tracker->edgesmap );
+      hashmap_reset( &tracker->vertsmap );
       break;
   }
 }
@@ -138,14 +158,24 @@ static INLINE void coll_geom_trace_test_tracker_reset( coll_geom_trace_test_trac
 static INLINE void coll_geom_trace_test_tracker_flag( coll_geom_trace_test_tracker_t *tracker, size_t no, int32 type ){
   switch( type )
   {
-    case 2: dirty_tracker_clean( &tracker->faces, no ); break;
-    case 1: dirty_tracker_clean( &tracker->edges, no ); break;
+    case 2:
+      //dirty_tracker_clean( &tracker->faces, no );
+      hashmap_add( &tracker->facesmap, no );
+      break;
+    case 1:
+      //dirty_tracker_clean( &tracker->edges, no );
+      hashmap_add( &tracker->edgesmap, no );
+      break;
     case 0:
-    default:dirty_tracker_clean( &tracker->verts, no ); break;
+    default:
+      //dirty_tracker_clean( &tracker->verts, no );
+      hashmap_add( &tracker->vertsmap, no );
+      break;
   }
 }
 
 static INLINE int32 coll_geom_trace_test_tracker_flagged( const coll_geom_trace_test_tracker_t *tracker, size_t no, int32 type ){
+  /*
   switch( type )
   {
     case 2:  return dirty_tracker_isclean( &tracker->faces, no ); break;
@@ -153,7 +183,19 @@ static INLINE int32 coll_geom_trace_test_tracker_flagged( const coll_geom_trace_
     case 0:
     default: return dirty_tracker_isclean( &tracker->verts, no ); break;
   }
+  */
+
+  switch( type )
+  {
+    case 2:  return hashmap_found( &tracker->facesmap, no ); break;
+    case 1:  return hashmap_found( &tracker->edgesmap, no ); break;
+    case 0:
+    default: return hashmap_found( &tracker->vertsmap, no ); break;
+  }
+  return 0;
 }
+
+/*
 static INLINE void coll_geom_trace_test_tracker_unflag( coll_geom_trace_test_tracker_t *tracker, size_t no, int32 type ){
   switch( type )
   {
@@ -173,6 +215,7 @@ static INLINE int32 coll_geom_trace_test_tracker_unflagged( const coll_geom_trac
     default: return dirty_tracker_isdirty2( &tracker->verts, no ); break;
   }
 }
+*/
 
 //0 for vertex hit, 1 for edge hit, 2 for face hit
 static INLINE void _coll_geom_trace_push_hit( coll_geom_trace_test_t *test, coll_hitpoint_t hit, size_t no, int32 type ){
@@ -193,18 +236,18 @@ static INLINE void _coll_geom_trace_push_hit( coll_geom_trace_test_t *test, coll
 
 #define VERT_FLAGGED( i ) coll_geom_trace_test_tracker_flagged( &test->tracker, i, 0 )
 #define FLAG_VERT( i ) coll_geom_trace_test_tracker_flag   ( &test->tracker, i, 0 )
-#define VERT_UNFLAGGED( I ) coll_geom_trace_test_tracker_unflagged( &test->tracker, i, 0 )
-#define UNFLAG_VERT( i ) coll_geom_trace_test_tracker_unflag( &test->tracker, i, 0 )
+//#define VERT_UNFLAGGED( I ) coll_geom_trace_test_tracker_unflagged( &test->tracker, i, 0 )
+//#define UNFLAG_VERT( i ) coll_geom_trace_test_tracker_unflag( &test->tracker, i, 0 )
 
 #define EDGE_FLAGGED( i ) coll_geom_trace_test_tracker_flagged( &test->tracker, i, 1 )
 #define FLAG_EDGE( i ) coll_geom_trace_test_tracker_flag   ( &test->tracker, i, 1 )
-#define EDGE_UNFLAGGED( I ) coll_geom_trace_test_tracker_unflagged( &test->tracker, i, 1 )
-#define UNFLAG_EDGE( i ) coll_geom_trace_test_tracker_unflag( &test->tracker, i, 1 )
+//#define EDGE_UNFLAGGED( I ) coll_geom_trace_test_tracker_unflagged( &test->tracker, i, 1 )
+//#define UNFLAG_EDGE( i ) coll_geom_trace_test_tracker_unflag( &test->tracker, i, 1 )
 
 #define FACE_FLAGGED( i ) coll_geom_trace_test_tracker_flagged( &test->tracker, i, 2 )
 #define FLAG_FACE( i ) coll_geom_trace_test_tracker_flag   ( &test->tracker, i, 2 );
-#define FACE_UNFLAGGED( I ) coll_geom_trace_test_tracker_unflagged( &test->tracker, i, 2 )
-#define UNFLAG_FACE( i ) coll_geom_trace_test_tracker_unflag( &test->tracker, i, 2 )
+//#define FACE_UNFLAGGED( I ) coll_geom_trace_test_tracker_unflagged( &test->tracker, i, 2 )
+//#define UNFLAG_FACE( i ) coll_geom_trace_test_tracker_unflag( &test->tracker, i, 2 )
 
 void _coll_geom_trace_gather_vert_hits( coll_geom_trace_test_t *test, const coll_geom_trace_object_t *object ){
   array_const_indirect_iter_t it = array_const_indirect_iter_init( &test->geom->verts.array,
@@ -219,9 +262,9 @@ void _coll_geom_trace_gather_vert_hits( coll_geom_trace_test_t *test, const coll
     if( !v )
       continue;
 
-    if( FACE_FLAGGED(i) )
+    if( VERT_FLAGGED(i) )
       continue;
-    //FLAG_FACE(i);  //NOTE: should we flag here, or after hit?
+    FLAG_VERT(i);  //NOTE: should we flag here, or after hit?
 
     f3copy( hit.p, v->p );
 
@@ -270,7 +313,7 @@ void _coll_geom_trace_gather_vert_hits( coll_geom_trace_test_t *test, const coll
         continue; //should never happen...
 
       f3copy( hit.n, f->plane.n );
-      _coll_geom_trace_push_hit( test, hit, j, 2 );
+      _coll_geom_trace_push_hit( test, hit, j, 2 ); //this will flag face
     }
   }
 
@@ -293,7 +336,7 @@ void _coll_geom_trace_gather_edge_hits( coll_geom_trace_test_t *test, const coll
     //flagged already added to the hit list (indices & hits)
     if( EDGE_FLAGGED(i) )
       continue;
-    //FLAG_EDGE(i); //NOTE: should we flag here, or after hit?
+    FLAG_EDGE(i); //NOTE: should we flag here, or after hit?
 
     //now, only edges left to test are the ones with end points
     //not touching the object. add these edges to the hit list (indices & hits)
@@ -522,8 +565,6 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
         //clean this edge and its faces to allow testing (assumption wrong). the test
         //will populate traceinfo.
         FLAG_EDGE( k );
-        FLAG_FACE( e->faceindices[0] );
-        FLAG_FACE( e->faceindices[1] );
       }
     }
     if( !within )

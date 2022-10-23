@@ -25,3 +25,4 @@ void   hashmap_reset ( hashmap_t *map );
 int32  hashmap_add   ( hashmap_t *map, size_t val );  //returns 1 if collision occurred, ignores dups
 //int32  hashmap_remove( hashmap_t *map, size_t val );
 int32  hashmap_found ( const hashmap_t *map, size_t val );
+float hash_collisions_rate();

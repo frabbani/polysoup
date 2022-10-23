@@ -2,6 +2,18 @@
 
 #include "defs.h"
 
+/* What is a dirty boolean?
+    - The purpose of the dirty boolean technique is to falsify a large list of booleans
+      with a single operation
+    - If the entire list contains some value x, comparing an element of this list's value
+      against a single value y will return true/false if the values are
+      equal/not equal.
+    - To clear the entire list, change the value of y, and all values in this list will
+      become stale
+    - This is much faster than a memset, since this is a O(1) operation, where as
+      memset is O(n)
+ */
+
 typedef struct{
   uint32   size;
   uint32   bool;

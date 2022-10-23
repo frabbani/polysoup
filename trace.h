@@ -2,6 +2,7 @@
 
 #include "collision.h"
 #include "bpcd.h"
+#include "hash.h"
 
 
 typedef enum{
@@ -38,9 +39,27 @@ ARRAYDEF( collhit, coll_hitpoint_t );
 #define collhitarray_new( a, v )  collhitarray_add1( a, v, ARRTAG )
 
 typedef struct coll_geom_trace_test_tracker_s{
-  dirty_tracker_t  verts;
-  dirty_tracker_t  edges;
-  dirty_tracker_t  faces;
+  /*
+    The dirty-trackers implementation can be thought of as a "perfect hash-map",
+    where the hash is the value/index itself. While looks are faster, the performance
+    will be less than ideal for very large n due in part both to CPU caching and
+    O(n) storage
+
+   The hashmap implementation is O(1), which drastically reduces storage, and arguably
+   improves CPU cache performance
+
+   I wrote the following utility to test a hash map with a table size of 256, 64 random values
+   out of 300,000 run 5000 times yielded a collision average of ~2.8% (around 7 out of 256). Running
+   a similar test with 32 random values, and the collision average was 0.75% (1 out of 256).
+
+   https://github.com/frabbani/hash_c
+  */
+  //dirty_tracker_t  verts;
+  //dirty_tracker_t  edges;
+  //dirty_tracker_t  faces;
+  hashmap_t        vertsmap;
+  hashmap_t        edgesmap;
+  hashmap_t        facesmap;
 }coll_geom_trace_test_tracker_t;
 
 
