@@ -4,6 +4,7 @@
 
 #include "math.h"
 #include "string.h"
+#include "float.h"
 
 
 #define CONSTF3X3(f3x3) ( (const float3*)(const void*)f3x3 )
@@ -96,6 +97,17 @@ static inline int f3eqt( const float3 f3u, const float3 f3v, float tol ){
       fabsf( f3u[0] - f3v[0] ) < tol &&
       fabsf( f3u[1] - f3v[1] ) < tol &&
       fabsf( f3u[2] - f3v[2] ) < tol;
+}
+
+static inline float f3cmp( const float3 f3u, const float3 f3v, float tol ){
+  for( size_t i = 0; i < 3; i++ ){
+    if( f3u[i] > f3v[i] + tol )
+      return +1;
+    else
+    if( f3u[i] < f3v[i] - tol )
+      return -1;
+  }
+  return 0;
 }
 
 

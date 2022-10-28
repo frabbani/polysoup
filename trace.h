@@ -54,12 +54,12 @@ typedef struct coll_geom_trace_test_tracker_s{
 
    https://github.com/frabbani/hash_c
   */
-  //dirty_tracker_t  verts;
-  //dirty_tracker_t  edges;
-  //dirty_tracker_t  faces;
-  hashmap_t        vertsmap;
-  hashmap_t        edgesmap;
-  hashmap_t        facesmap;
+  dirty_tracker_t  verts;
+  dirty_tracker_t  edges;
+  dirty_tracker_t  faces;
+  //hashmap_t        vertsmap;
+  //hashmap_t        edgesmap;
+  //hashmap_t        facesmap;
 }coll_geom_trace_test_tracker_t;
 
 

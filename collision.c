@@ -11,6 +11,29 @@ ARRAYFUNC( collface, coll_face_t )
 ARRAYFUNC( colledge, coll_edge_t )
 ARRAYFUNC( collvert, coll_vert_t )
 
+int32 coll_vert_comparator( const void *ptr0, const void *ptr1 ){
+
+  const coll_vert_t *lhs = ptr0;
+  const coll_vert_t *rhs = ptr1;
+  return f3cmp( lhs->p, rhs->p, TOL );
+}
+
+coll_vert_t coll_vert_( const float3 p ){
+  coll_vert_t v;
+  v.index = -1;
+  f3copy( v.p, p );
+  return v;
+}
+
+int32 coll_edge_comparator( const void *ptr0, const void *ptr1 ){
+  const coll_edge_t *lhs = ptr0;
+  const coll_edge_t *rhs = ptr1;
+  int32 c = f3cmp( lhs->ps[0], rhs->ps[0], TOL );
+  if( 0 == c )
+    return f3cmp( lhs->ps[1], rhs->ps[1], TOL );
+  return c;
+}
+
 void coll_vert_init( coll_vert_t *vert,
                      size_t index, const float3 p,
                      const colledgearray_t *colledges,
@@ -451,8 +474,9 @@ size_t coll_geom_addedge( coll_geom_t *geom, const float3 p0, const float3 p1, s
   const float tol = 1e-5f;
 
   if( !isoftype_colledgearray( &geom->edges.array ) ){
-     geom->edges = colledgearray_make( 256 );
-   }
+    geom->edges = colledgearray_make( 256 );
+    add_compare_func( geom->edges._typeof, &coll_edge_comparator );
+  }
 
   size_t      i;
   coll_edge_t edge, *edgeptr;
@@ -463,7 +487,6 @@ size_t coll_geom_addedge( coll_geom_t *geom, const float3 p0, const float3 p1, s
         __FUNCTION__, __LINE__, geom->edges.size );
     return -1;
   }
-
   edgeptr = geom->edges.elems;
   for( i = 0; i < geom->edges.size; i++ ){
     if( f3eqt( edgeptr->ps[0], edge.ps[1], tol ) &&
@@ -496,7 +519,7 @@ size_t coll_geom_addface(
   coll_face_t face, *ptr;
 
   coll_face_calc( &face, p0, p1, p2 );
-  if( 0.0f == face.bcs.det ){
+  if( fabsf(face.bcs.det) < 1e-7f ){
     printf( "%s:%d - warning: invalid collision face (skipped %zu).\n",
         __FUNCTION__, __LINE__, geom->faces.size );
     return -1;
@@ -519,7 +542,7 @@ int32 coll_geom_finalize( coll_geom_t *geom ){
     printf( "%s - error: collision geometry not initialized\n", __FUNCTION__ );
     return 0;
   }
-  const float tol = 1e-5f;
+  const float tol = 10.0f * FLT_EPSILON; //1e-7f;
 
   coll_edge_t *edges = geom->edges.elems;
   size_t       esize = geom->edges.size;
@@ -543,28 +566,27 @@ int32 coll_geom_finalize( coll_geom_t *geom ){
   for( size_t i = 0; i < esize; i++ )
     coll_edge_calc_voronoi( &edges[i] );
 
-  if( !isoftype_collvertarray( &geom->verts.array ) )
+  if( !isoftype_collvertarray( &geom->verts.array ) ){
     geom->verts = collvertarray_make( fsize * 3 );
+    add_compare_func( geom->verts._typeof, &coll_vert_comparator );
+  }
+
+  float3 z;
+  f3set( z, 0.0f, 0.0f, 0.0f );
+  coll_vert_t v0 = coll_vert_( z );
 
   for( size_t i = 0; i < fsize; i++ ){
     coll_face_t *f = &faces[i];
     f->surfindex = remap[ f->surfindex ];
 
     for( size_t j = 0; j < 3; j++ ){
-      size_t k;
-      for( k = 0; k < geom->verts.size; k++ ){
-        coll_vert_t *vert = &geom->verts.elems[k];
-        if( f3eqt( f->ps[j], vert->p, tol ) ){
-          coll_vert_add_feat( vert, 0, f->index );
-          f->vertindices[j] = vert->index;
-          break;
-        }
-      }
-      if( k == geom->verts.size ){
-        coll_vert_t *vert = collvertarray_new( &geom->verts, NULL );
-        coll_vert_init( vert, geom->verts.size - 1, f->ps[j], &geom->edges, &geom->faces );
-        coll_vert_add_feat( vert, 0, f->index );
-      }
+      size_t pos;
+      f3copy( v0.p, f->ps[j] );
+      coll_vert_t *v = array_add_ifdne( &geom->verts.array, &v0, &pos );
+      if( -1 == v->index )
+        coll_vert_init( v, pos, f->ps[j], &geom->edges, &geom->faces );
+      coll_vert_add_feat( v, 0, f->index );
+      f->vertindices[j] = v->index;
     }
   }
 
@@ -722,6 +744,7 @@ int32 coll_geom_load( coll_geom_t *geom, const char objfile[], int32 term ){
   else
     memset( geom, 0, sizeof(coll_geom_t) );
 
+
   FILE *fp = fopen( objfile, "r" );
   if( !fp ){
     printf( "%s:error - invalid OBJ file '%s'\n", __FUNCTION__, objfile );
@@ -820,6 +843,32 @@ int32 coll_geom_load( coll_geom_t *geom, const char objfile[], int32 term ){
     }
   }
 
+
+  colledgearray_t edges = colledgearray_make( 256 );
+  colledgearray_t edges_dedup = colledgearray_make( 256 );
+  add_compare_func( edges._typeof, &coll_edge_comparator );
+
+  for( size_t i = 0; i < numfs; i++ ){
+    float3 ps[3];
+    f_t *f = &fs[i];
+    f3copy( ps[0], vs[ f->i0 ].xyz );
+    f3copy( ps[1], vs[ f->i1 ].xyz );
+    f3copy( ps[2], vs[ f->i2 ].xyz );
+    for( size_t j = 0; j < 3; j++ ){
+      coll_edge_t edge;
+      f3copy( edge.ps[0], ps[j] );
+      f3copy( edge.ps[1], ps[(j+1)%3] );
+      array_add_ifdne( &edges_dedup.array, &edge, NULL );
+      colledgearray_add0( &edges, edge, ARRTAG );
+    }
+  }
+  printf( "%s # of edges vs. # of dedup: %zu v. %zu\n",
+          __FUNCTION__, edges.size, edges_dedup.size );
+
+  colledgearray_term( &edges );
+  colledgearray_term( &edges_dedup );
+
+
   for( size_t i = 0; i < numfs; i++ ){
     float3 ps[3];
     f_t *f = &fs[i];
@@ -828,7 +877,6 @@ int32 coll_geom_load( coll_geom_t *geom, const char objfile[], int32 term ){
     f3copy( ps[2], vs[ f->i2 ].xyz );
     coll_geom_addface( geom, ps[0], ps[1], ps[2], f->s, i );
   }
-
   free( vs );
   free( fs );
   return coll_geom_finalize( geom );
@@ -881,3 +929,23 @@ int32 coll_geom_load_bpcd_grid( const coll_geom_t *geom, bpcd_grid_t *grid, floa
   return 1;
 }
 
+/*
+coll_feat_iter_t coll_feat_iter_init( const size_t *indices, size_t max ){
+  coll_feat_iter_t it;
+  it.max = max;
+  it.i   = -1;
+  it.j   = -1;
+  it._indices = indices;
+  return it;
+}
+
+int32 coll_feat_iterate( coll_feat_iter_t *iter ){
+  if( iter->i == iter->max )
+    return 0;
+  iter->i++;
+  iter->j = iter->_indices[ iter->i ];
+  if( -1 == iter->j )
+    return 0;
+  return 1;
+}
+*/

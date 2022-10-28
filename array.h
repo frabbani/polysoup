@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defs.h"
+#include "compare.h"
 
 #define ISA_ARRAY( type, varn ) \
     size_t  size;               \
@@ -62,7 +63,8 @@ void     array_pop0( array_t *array, int32 clear, const char *func, int32 line  
 void    *array_add0( array_t *array, const void *data, size_t *index, const char *func, int32 line );
 void     array_expand0( array_t *array, size_t include_index, const char func[], int32 line );
 size_t   array_index( array_t *array, const void *data, int (*equal)(const void *, const void *) );
-void    *array_add_ifdne( array_t *array, const void *data, int (*equal)(const void *, const void *), size_t *index );
+void    *array_add_ifdne0( array_t *array, const void *data, int (*equal)(const void *, const void *), size_t *index );
+void    *array_add_ifdne( array_t *array, const void *data, size_t *index );
 int32    sorted_array_sandwich_pair( array_t *array, const void *data, int32 (*compare)(const void *, const void *), size_t *left, size_t *right );
 size_t   sorted_array_index( const array_t *array, const void *data, comparator_t compare );
 int32    array_isoftype( const array_t *array, const char *type );

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <float.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -8,6 +9,7 @@
 
 #define PI  3.141592653589793
 #define E   2.71828183
+#define TOL (1e-5)
 
 
 #define SWAP( a, b ){ \
@@ -82,5 +84,9 @@ typedef union {
 
 typedef int32 (*comparator_t)( const void *, const void * );
 typedef void  (*destructor_t)( void * );
+
+
+
+extern int32 DEBUG;
 
 #define INLINE

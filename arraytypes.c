@@ -1,5 +1,6 @@
 #include "arraytypes.h"
 
+#include "strn.h"
 #include "libs.h"
 
 
