@@ -52,11 +52,11 @@ ARRAYFUNC( collgeomtrace, coll_geom_trace_info_t );
 ARRAYFUNC( collhit, coll_hitpoint_t );
 
 void coll_geom_trace_test_tracker_term( coll_geom_trace_test_tracker_t *tracker ){
-
+#ifdef DIRTY
   dirty_tracker_term( &tracker->verts );
   dirty_tracker_term( &tracker->edges );
   dirty_tracker_term( &tracker->faces );
-
+#endif
   //hashmaps have no termination
 }
 
@@ -64,14 +64,15 @@ void coll_geom_trace_test_tracker_init( coll_geom_trace_test_tracker_t *tracker,
                                         size_t vertcount,
                                         size_t edgecount,
                                         size_t facecount ){
+#ifdef DIRTY
   dirty_tracker_init( &tracker->verts, vertcount );
   dirty_tracker_init( &tracker->edges, edgecount );
   dirty_tracker_init( &tracker->faces, facecount );
-  /*
+#else
   hashmap_init( &tracker->vertsmap, vertcount-1 );
   hashmap_init( &tracker->edgesmap, edgecount-1 );
   hashmap_init( &tracker->facesmap, facecount-1 );
-  */
+#endif
 }
 
 void coll_geom_trace_test_term( coll_geom_trace_test_t *test ){
@@ -129,53 +130,81 @@ int32 coll_geom_trace_test_init(
 }
 
 static INLINE void coll_geom_trace_test_tracker_reset( coll_geom_trace_test_tracker_t *tracker, int32 type ){
+#ifdef DIRTY
   switch( type )
   {
     case 2:
       dirty_tracker_next( &tracker->faces );
-      //hashmap_reset( &tracker->facesmap );
       break;
     case 1:
       dirty_tracker_next( &tracker->edges );
-      //hashmap_reset( &tracker->edgesmap );
       break;
     case 0:
       dirty_tracker_next( &tracker->verts );
-      //hashmap_reset( &tracker->vertsmap );
       break;
     default:
       dirty_tracker_next( &tracker->faces );
       dirty_tracker_next( &tracker->edges );
       dirty_tracker_next( &tracker->verts );
-      //hashmap_reset( &tracker->facesmap );
-      //hashmap_reset( &tracker->edgesmap );
-      //hashmap_reset( &tracker->vertsmap );
       break;
   }
+#else
+
+  switch( type )
+  {
+    case 2:
+      hashmap_reset( &tracker->facesmap );
+      break;
+    case 1:
+      hashmap_reset( &tracker->edgesmap );
+      break;
+    case 0:
+      hashmap_reset( &tracker->vertsmap );
+      break;
+    default:
+      hashmap_reset( &tracker->facesmap );
+      hashmap_reset( &tracker->edgesmap );
+      hashmap_reset( &tracker->vertsmap );
+      break;
+  }
+#endif
 }
 
 
 static INLINE void coll_geom_trace_test_tracker_flag( coll_geom_trace_test_tracker_t *tracker, size_t no, int32 type ){
+#ifdef DIRTY
   switch( type )
   {
     case 2:
       dirty_tracker_clean( &tracker->faces, no );
-      //hashmap_add( &tracker->facesmap, no );
       break;
     case 1:
       dirty_tracker_clean( &tracker->edges, no );
-      //hashmap_add( &tracker->edgesmap, no );
       break;
     case 0:
     default:
       dirty_tracker_clean( &tracker->verts, no );
-      //hashmap_add( &tracker->vertsmap, no );
       break;
   }
+#else
+  switch( type )
+  {
+    case 2:
+      hashmap_add( &tracker->facesmap, no );
+      break;
+    case 1:
+      hashmap_add( &tracker->edgesmap, no );
+      break;
+    case 0:
+    default:
+      hashmap_add( &tracker->vertsmap, no );
+      break;
+  }
+#endif
 }
 
 static INLINE int32 coll_geom_trace_test_tracker_flagged( const coll_geom_trace_test_tracker_t *tracker, size_t no, int32 type ){
-
+#ifdef DIRTY
   switch( type )
   {
     case 2:  return dirty_tracker_isclean( &tracker->faces, no ); break;
@@ -183,8 +212,7 @@ static INLINE int32 coll_geom_trace_test_tracker_flagged( const coll_geom_trace_
     case 0:
     default: return dirty_tracker_isclean( &tracker->verts, no ); break;
   }
-
-  /*
+#else
   switch( type )
   {
     case 2:  return hashmap_found( &tracker->facesmap, no ); break;
@@ -192,7 +220,7 @@ static INLINE int32 coll_geom_trace_test_tracker_flagged( const coll_geom_trace_
     case 0:
     default: return hashmap_found( &tracker->vertsmap, no ); break;
   }
-  */
+#endif
   return 0;
 }
 
@@ -440,8 +468,6 @@ void _coll_geom_trace_test_cull( coll_geom_trace_test_t *test, sphere_t sphere, 
 
   for( size_t i = 0; i < 3; i++ ){
     index = face->edgeindices[i];
-    if( index == 533 && DEBUG )
-      PRINT_HERE
     if( EDGE_FLAGGED(index) )
       continue;
     FLAG_EDGE(index);
