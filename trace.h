@@ -37,12 +37,6 @@ ARRAYDEF( collhit, coll_hitpoint_t );
 #define collhitarray_add( a, v )  collhitarray_add0( a, v, ARRTAG )
 #define collhitarray_new( a, v )  collhitarray_add1( a, v, ARRTAG )
 
-typedef struct coll_geom_trace_test_tracker_s{
-  dirty_tracker_t  verts;
-  dirty_tracker_t  edges;
-  dirty_tracker_t  faces;
-}coll_geom_trace_test_tracker_t;
-
 
 typedef struct{
   const coll_geom_t *geom;
@@ -58,7 +52,10 @@ typedef struct{
   collhitarray_t  facehitpoints;
 
   collgeomtracearray_t traceinfos;
-  coll_geom_trace_test_tracker_t tracker;
+
+  dirty_tracker_t  verttracker;
+  dirty_tracker_t  edgetracker;
+  dirty_tracker_t  facetracker;
 
   int32            stuck;
   int32            penetrating;

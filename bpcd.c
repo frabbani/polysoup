@@ -53,7 +53,7 @@ void bpcd_grid_init( bpcd_grid_t *grid, const float3 min, const float3 max, floa
     for( size_t r = 0; r < grid->nrows; r++ ){
       grid->levs[l].rows[r].cols = malloc( grid->ncols * sizeof(col) );
       for( size_t c = 0; c < grid->ncols; c++ )
-        grid->levs[l].rows[r].cols[c].cell = -1;
+        grid->levs[l].rows[r].cols[c].cell = NULL;
     }
   }
 
@@ -62,12 +62,12 @@ void bpcd_grid_init( bpcd_grid_t *grid, const float3 min, const float3 max, floa
 
 }
 
-bpcd_grid_cell_t *bpcd_grid_add_cell( bpcd_grid_t *grid, size_t l, size_t r, size_t c ){
+void bpcd_grid_add_cell( bpcd_grid_t *grid, size_t l, size_t r, size_t c ){
   if( l >= grid->nlevs || r >= grid->nrows || c >= grid->ncols )
-    NULL;
-  if( grid->levs[l].rows[r].cols[c].cell != -1 ){
-    return array_data( &grid->cells, grid->levs[l].rows[r].cols[c].cell );
-  }
+    return;
+
+  if( grid->levs[l].rows[r].cols[c].cell )
+    return;
 
   size_t i;
   bpcd_grid_cell_t *cell = array_add( &grid->cells, NULL, &i );
@@ -77,7 +77,7 @@ bpcd_grid_cell_t *bpcd_grid_add_cell( bpcd_grid_t *grid, size_t l, size_t r, siz
   cell->c = c;
 
   float3 min, max;
-  size_t is[] = { c, r, l };
+  size_t is[] = { l, r, c };
   for( size_t i = 0; i < 3; i++ ){
     min[i] = grid->aabb.min[i] + is[i] * grid->cellsize;
     max[i] = min[i] + grid->cellsize;
@@ -86,15 +86,14 @@ bpcd_grid_cell_t *bpcd_grid_add_cell( bpcd_grid_t *grid, size_t l, size_t r, siz
   aabb_set( &cell->aabb, min, max, 0.0f, 1 );
   cell->indices = sizearray_make( 16 );
 
-  grid->levs[l].rows[r].cols[c].cell = cell->index;
-  return cell;
+  grid->levs[l].rows[r].cols[c].cell = cell;
 }
 
 bpcd_grid_sector_t bpcd_grid_sector_make( const bpcd_grid_t *grid, float3 p, float3 halfsize ){
   float3 min, max;
   for( size_t i = 0; i < 3; i++ ){
     min[i] = floorf( ( p[i] - halfsize[i] - grid->aabb.min[i] ) / grid->cellsize );
-    max[i] = floorf( ( p[i] + halfsize[i] - grid->aabb.min[i] ) / grid->cellsize );
+    max[i] = ceilf ( ( p[i] + halfsize[i] - grid->aabb.min[i] ) / grid->cellsize );
   }
   CLAMP( min[2], 0.0f, (float)(grid->nlevs-1) );
   CLAMP( min[1], 0.0f, (float)(grid->nrows-1) );
@@ -119,109 +118,23 @@ bpcd_grid_sector_t bpcd_grid_sector_make( const bpcd_grid_t *grid, float3 p, flo
   return sector;
 }
 
-const bpcd_grid_cell_t *bpcd_grid_get_cell( const bpcd_grid_t *grid, size_t l, size_t r, size_t c ){
-  if( l >= grid->nlevs || r >= grid->nrows || c >= grid->ncols )
-    NULL;
-  if( grid->levs[l].rows[r].cols[c].cell != -1 ){
-    return array_data_ro( &grid->cells, grid->levs[l].rows[r].cols[c].cell );
-  }
-  return NULL;
-}
-
 void bpcd_grid_aabb_for_cell( const bpcd_grid_t *grid, size_t l, size_t r, size_t c, aabb_t *aabb ){
   if( l >= grid->nlevs || r >= grid->nrows || c >= grid->ncols )
     return;
 
-  size_t cellno = grid->levs[l].rows[r].cols[c].cell;
-  if( cellno != -1 ){
-    const bpcd_grid_cell_t *cell = array_data_ro( &grid->cells, cellno );
+  const bpcd_grid_cell_t *cell = grid->levs[l].rows[r].cols[c].cell;
+  if( cell ){
     *aabb = cell->aabb;
     return;
   }
 
   float3 min, max;
-  size_t is[] = { c, r, l };
+  size_t is[] = { l, r, c };
   for( size_t i = 0; i < 3; i++ ){
     min[i] = grid->aabb.min[i] + is[i] * grid->cellsize;
     max[i] = min[i] + grid->cellsize;
   }
   aabb_set( aabb, min, max, 0.0f, 1 );  //need to calculate points for SAT test
-}
-
-bpcd_grid_sector_const_iter_t bpcd_grid_sector_const_iter_init( bpcd_grid_sector_t sector ){
-  bpcd_grid_sector_const_iter_t kit;
-  kit.sector = sector;
-  kit.l = -1;
-  kit.r = -1;
-  kit.c = -1;
-  kit.cell = NULL;
-  return kit;
-}
-
-int32 bpcd_grid_sector_iterate_const( bpcd_grid_sector_const_iter_t *kit, int32 notempty ){
-  if( kit->l == -1 ){
-    kit->l = kit->sector.ls[0];
-    kit->r = kit->sector.rs[0];
-    kit->c = kit->sector.cs[0];
-    if( !notempty ){
-      size_t no = kit->sector.grid->levs[kit->l].rows[kit->r].cols[kit->c].cell;
-      if( no != -1 )
-        kit->cell = array_data_ro( &kit->sector.grid->cells, no );
-      return 1;
-    }
-
-    for( ; kit->l <= kit->sector.ls[1]; kit->l++ ){
-      for( ; kit->r <= kit->sector.rs[1]; kit->r++ ){
-        for( ; kit->c <= kit->sector.cs[1]; kit->c++ ){
-          size_t no = kit->sector.grid->levs[kit->l].rows[kit->r].cols[kit->c].cell;
-          if( no != -1 ){
-            kit->cell = array_data_ro( &kit->sector.grid->cells, no );
-            return 1;
-          }
-        }
-      }
-    }
-
-    return 0;
-  }
-
-  if( kit->l > kit->sector.ls[1] )
-    return 0;
-
-  if( !notempty ){
-    kit->c++;
-    if( kit->c > kit->sector.cs[1] ){
-      kit->c = 0;
-      kit->r++;
-      if( kit->r > kit->sector.rs[1] ){
-        kit->r = 0;
-        kit->l++;
-      }
-      if( kit->l > kit->sector.ls[1] )
-        return 0;
-    }
-    size_t no = kit->sector.grid->levs[kit->l].rows[kit->r].cols[kit->c].cell;
-    kit->cell = array_data_ro( &kit->sector.grid->cells, no );
-    return 1;
-  }
-
-  do{
-    kit->c++;
-    if( kit->c > kit->sector.cs[1] ){
-      kit->c = 0;
-      kit->r++;
-      if( kit->r > kit->sector.rs[1] ){
-        kit->r = 0;
-        kit->l++;
-      }
-      if( kit->l > kit->sector.ls[1] )
-        return 0;
-    }
-    size_t no = kit->sector.grid->levs[kit->l].rows[kit->r].cols[kit->c].cell;
-    kit->cell = array_data_ro( &kit->sector.grid->cells, no );
-  }while( kit->cell == NULL );
-
-  return kit->cell != NULL;
 }
 
 /*

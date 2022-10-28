@@ -35,7 +35,6 @@ typedef struct{
 void aabb_empty( aabb_t *aabb );
 void aabb_set ( aabb_t *aabb, const float3 min, const float3 max, float pad, int calc_ps );
 void aabb_fit ( aabb_t *aabb, const float3 *ps, size_t nps, float pad, int calc_ps );
-void aabb_make( aabb_t *aabb, const float3 p, const float3 halfsize, float pad, int calc_ps );
 void aabb_make_sat( const aabb_t *aabb, sat_t *sat, int32 second );
 int32 aabb_lseg_hit( const aabb_t *aabb, const lseg_t *lseg );
 void  aabb_lseg_clip( const aabb_t *aabb, lseg_t *lseg, int assume_touching );

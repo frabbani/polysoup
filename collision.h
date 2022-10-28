@@ -131,4 +131,4 @@ INLINE const coll_face_t *coll_geom_getface_ro( const coll_geom_t *geom, size_t 
 
 
 int32 coll_geom_load( coll_geom_t *geom, const char objfile[], int32 term );
-int32 coll_geom_load_bpcd_grid( const coll_geom_t *geom, bpcd_grid_t *grid, float cellsize );
+int32 coll_geom_load_grid( const coll_geom_t *geom, bpcd_grid_t *grid, float cellsize );
