@@ -477,8 +477,9 @@ void _coll_geom_trace_test_cull( coll_geom_trace_test_t *test, sphere_t sphere, 
 
 void coll_geom_trace_test_sphere( coll_geom_trace_test_t *test, sphere_t sphere ){
 
+  const int32 write = 1;
   FILE *fp = NULL;
-  if( 1 )
+  if( write )
     fp = fopen( "coll_geom_trace_test_sphere.txt", "w" );
 
   test->cull.vertindices.size = 0;
@@ -522,8 +523,8 @@ void coll_geom_trace_test_sphere( coll_geom_trace_test_t *test, sphere_t sphere 
     }
   }
 
-  if( 1 && fp ){ //DEBUG && fp ){
-    fprintf( fp, "*** CULL ***");
+  if( write && fp ){
+    fprintf( fp, "*** CULL ***\n");
     fprintf( fp, "verts: %zu\n", test->cull.vertindices.size );
     for( size_t i = 0; i < test->cull.vertindices.size; i++ ){
       fprintf( fp, " [%zu] %zu\n", i, test->cull.vertindices.elems[i] );
@@ -538,19 +539,10 @@ void coll_geom_trace_test_sphere( coll_geom_trace_test_t *test, sphere_t sphere 
     }
   }
 
-  if( 1 ){ //If( DEBUG && fp ){
+  if( write && fp ){
     fclose( fp );
     fp = fopen( "coll_geom_trace_test_sphere.txt", "a" );
   }
-
-  /*
-  struct{
-    size_t elems[256];
-  } *dbg;
-  dbg = (void *)test->cull.faceindices.elems;
-  dbg = (void *)test->cull.edgeindices.elems;
-  dbg = (void *)test->cull.edgeindices.elems;
-  */
 
   test->hits.vertindices.size = 0;
   test->hits.edgeindices.size = 0;
@@ -564,7 +556,7 @@ void coll_geom_trace_test_sphere( coll_geom_trace_test_t *test, sphere_t sphere 
   _coll_geom_trace_gather_edge_hits( test, &obj );
   _coll_geom_trace_gather_face_hits( test, &obj );
 
-  if( DEBUG && fp ){
+  if( write && fp ){
     fprintf( fp, "*** HITS ***\n");
     fprintf( fp, "verts: %zu\n", test->hits.vertindices.size );
     for( size_t i = 0; i < test->hits.vertindices.size; i++ ){
@@ -579,7 +571,7 @@ void coll_geom_trace_test_sphere( coll_geom_trace_test_t *test, sphere_t sphere 
       fprintf( fp, " [%zu] %zu\n", i, test->hits.faceindices.elems[i] );
     };
   }
-  if( DEBUG && fp )
+  if( write && fp )
     fclose( fp );
 }
 
@@ -644,7 +636,6 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
       const coll_edge_t *e = &geom->edges.elems[k];
       if( coll_edge_inside_voronoi( e, vhits[i].n, flip ) ){
         within = 0;
-        break;
       }
       j++;
     }
@@ -653,27 +644,24 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
 
     j = v->edgeindices;
     while( (*j) != -1 ){
-      FLAG_EDGE( (*j) >> 1 );
-      j++;
-    }
-
-    j = v->faceindices;
-    while( (*j) != -1 ){
-      FLAG_FACE( (*j) );
-      j++;
+      size_t k   = (*j) >> 1;
+      FLAG_EDGE( k );
+      const coll_edge_t *e = &geom->edges.elems[k];
+      FLAG_FACE( e->faceindices[0] );
+      FLAG_FACE( e->faceindices[1] );
     }
 
     info.type    = 4;
     info.feat_no = v->index;
     f3copy( info.p, vhits[i].p );
     f3copy( info.n, vhits[i].n );
+    collgeomtracearray_new( &test->traceinfos, &info );
 
     float ddotn = f3dot( dir, info.n );
     if( ddotn < 0.0f ){
-      collgeomtracearray_new( &test->traceinfos, &info );
       if( ddotn < test->penetrating_dist )
         test->penetrating_dist = ddotn;
-      f3madd( dir, -ddotn * 1.01f, vhits[i].n );
+      f3madd( dir, -ddotn * 1.003f, vhits[i].n );
       test->penetrating++;
     }
   }
@@ -688,9 +676,6 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
     const coll_face_t *f1 = &geom->faces.elems[ e->faceindices[1] ];
     if( e->convex < 0 || NULL == f1 )
       continue;
-
-    //UNFLAG_FACE( e->faceindices[0] );
-    //UNFLAG_FACE( e->faceindices[1] );
 
     //these faces are tested in the test below, so flag them
     FLAG_FACE( e->faceindices[0] );
@@ -736,7 +721,7 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
     if( ddotn < 0.0f ){
       if( ddotn > test->penetrating_dist )
         test->penetrating_dist = ddotn;
-      f3madd( dir, -ddotn * 1.01f, n );
+      f3madd( dir, -ddotn * 1.003f, n );
       test->penetrating++;
     }
   }
@@ -751,7 +736,7 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
     if( ddotn < 0.0f ){
       if( ddotn > test->penetrating_dist )
         test->penetrating_dist = ddotn;
-      f3madd( dir, -ddotn * 1.01f, f->plane.n );
+      f3madd( dir, -ddotn * 1.003f, f->plane.n );
       test->penetrating++;
       info.type    = 3;
       info.feat_no = findices[i];

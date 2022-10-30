@@ -268,9 +268,14 @@ int coll_face_aabb_hit( const coll_face_t *face, const aabb_t *aabb ){
   float3 u, n;
   sat_t  sat;
 
+  const float3 aabb_axes[] = {
+      { 1.0f, 0.0f, 0.0f },
+      { 0.0f, 1.0f, 0.0f },
+      { 0.0f, 0.0f, 1.0f }
+  };
+
   if( !sphere_sphere_hit( &aabb->sphere, &face->sphere ) )
     return 0;
-
   /*
   sat_init( &sat, face->plane.n );
   aabb_make_sat ( aabb, &sat, 0 );
@@ -281,15 +286,11 @@ int coll_face_aabb_hit( const coll_face_t *face, const aabb_t *aabb ){
   if( !plane_crosses( &face->plane, aabb->ps, 8 ) )
     return 0;
 
-  const float3 aabb_axes[] = {
-      { 1.0f, 0.0f, 0.0f },
-      { 0.0f, 1.0f, 0.0f },
-      { 0.0f, 0.0f, 1.0f }
-  };
 
   for( i = 0; i < 3; i++ ){
     sat_init( &sat, aabb_axes[i] );
     sat_make( &sat, 0, aabb->sphere.c, aabb->halfsize[i] );
+    //aabb_make_sat( aabb, &sat, 0 );
     sat_calc( &sat, 1, face->ps, 3 );
     if( !sat_olap( &sat ) )
       break;
@@ -896,6 +897,7 @@ int32 coll_geom_load_bpcd_grid( const coll_geom_t *geom, bpcd_grid_t *grid, floa
       printf( "%s:warning - invalid face no. %zu (id=%zu)\n", __FUNCTION__, kit.i, face->index );
       continue;
     }
+
     float3 p, h;
     f3copy( p, face->ps[0] );
     f3add ( p, face->ps[1] );
@@ -908,7 +910,7 @@ int32 coll_geom_load_bpcd_grid( const coll_geom_t *geom, bpcd_grid_t *grid, floa
       mid = face->ps[1][i];
       max = face->ps[2][i];
       SORT3( min, mid, max );
-      h[i] = ( max - min ) / 2.0f;
+      h[i] = ( max - min + 1.0f ) / 2.0f;
     }
 
     bpcd_grid_sector_t sector = bpcd_grid_sector_make( grid, p, h );
