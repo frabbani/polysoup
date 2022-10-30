@@ -649,6 +649,7 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
       const coll_edge_t *e = &geom->edges.elems[k];
       FLAG_FACE( e->faceindices[0] );
       FLAG_FACE( e->faceindices[1] );
+      j++;
     }
 
     info.type    = 4;

@@ -44,7 +44,8 @@
 
 #define SQUARE(a) ((a)*(a))
 
-#ifndef int32
+#ifndef INTDEFS
+#define INTDEFS
 typedef int8_t  int8;
 typedef int16_t int16;
 typedef int32_t int32;
