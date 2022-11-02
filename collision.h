@@ -111,6 +111,16 @@ typedef struct coll_geom_s{
   int32    _finalized;
 }coll_geom_t;
 
+/*
+typedef struct coll_feat_iter_s{
+  const size_t *_indices;
+  size_t max;
+  size_t i, j;
+}coll_feat_iter_t ;
+
+coll_feat_iter_t coll_feat_iter_init( const size_t *indices, size_t max );
+int32            coll_feat_iterate( coll_feat_iter_t *iter );
+*/
 
 void coll_geom_term( coll_geom_t *geom );
 void coll_geom_addsurf( coll_geom_t *geom, const char name[] );

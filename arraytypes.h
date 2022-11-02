@@ -18,10 +18,11 @@ typedef struct name##array_s{ \
 INLINE int32 isoftype_##name##array( const array_t *array ); \
 INLINE name##array_t  name##array_make( size_t prelim_limit );\
 INLINE name##array_t *name##array_init( size_t prelim_limit );\
-INLINE type  name##array_add0( name##array_t *array, type elem, const char func[], int32 line );\
-INLINE type *name##array_add1( name##array_t *array, const type *elem, const char func[], int32 line );\
-INLINE void  name##array_term( name##array_t *array );\
-INLINE void  name##array_free( name##array_t **array );\
+INLINE type    name##array_add0( name##array_t *array, type elem, const char func[], int32 line );\
+INLINE type   *name##array_add1( name##array_t *array, const type *elem, const char func[], int32 line );\
+INLINE size_t  name##array_add_ifdne( name##array_t *array, type elem, const char func[], int32 line ); \
+INLINE void    name##array_term( name##array_t *array );\
+INLINE void    name##array_free( name##array_t **array );\
 
 
 #define ARRAYFUNC( name, type ) \
@@ -60,6 +61,15 @@ INLINE type *name##array_add1( name##array_t *array, const type *elem, const cha
   return &array->elems[ array->size-1 ]; \
 } \
 \
+INLINE size_t  name##array_add_ifdne( name##array_t *array, type elem, const char func[], int32 line ){ \
+  for( size_t i = 0; i < array->size; i++ ){ \
+    if( 0 == memcmp( &array->elems[ i ], &elem, sizeof(type) ) )  \
+      return i; \
+  } \
+  name##array_add0( array, elem, func, line );  \
+  return array->size - 1; \
+}\
+\
 INLINE void name##array_term( name##array_t *array ){  \
   if( array )  \
     array_term( &array->array ); \
@@ -73,6 +83,7 @@ INLINE void name##array_free( name##array_t **array ){  \
   } \
 } \
 \
+
 
 ARRAYDEF( size, size_t );
 #define sizearray_add( a, v )  sizearray_add0( a, v, ARRTAG )

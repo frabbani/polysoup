@@ -52,18 +52,27 @@ ARRAYFUNC( collgeomtrace, coll_geom_trace_info_t );
 ARRAYFUNC( collhit, coll_hitpoint_t );
 
 void coll_geom_trace_test_tracker_term( coll_geom_trace_test_tracker_t *tracker ){
+#ifdef DIRTY
   dirty_tracker_term( &tracker->verts );
   dirty_tracker_term( &tracker->edges );
   dirty_tracker_term( &tracker->faces );
+#endif
+  //hashmaps have no termination
 }
 
 void coll_geom_trace_test_tracker_init( coll_geom_trace_test_tracker_t *tracker,
                                         size_t vertcount,
                                         size_t edgecount,
                                         size_t facecount ){
+#ifdef DIRTY
   dirty_tracker_init( &tracker->verts, vertcount );
   dirty_tracker_init( &tracker->edges, edgecount );
   dirty_tracker_init( &tracker->faces, facecount );
+#else
+  hashmap_init( &tracker->vertsmap, vertcount-1 );
+  hashmap_init( &tracker->edgesmap, edgecount-1 );
+  hashmap_init( &tracker->facesmap, facecount-1 );
+#endif
 }
 
 void coll_geom_trace_test_term( coll_geom_trace_test_t *test ){
@@ -121,31 +130,81 @@ int32 coll_geom_trace_test_init(
 }
 
 static INLINE void coll_geom_trace_test_tracker_reset( coll_geom_trace_test_tracker_t *tracker, int32 type ){
+#ifdef DIRTY
   switch( type )
   {
-    case 2: dirty_tracker_next( &tracker->faces ); break;
-    case 1: dirty_tracker_next( &tracker->edges ); break;
-    case 0: dirty_tracker_next( &tracker->verts ); break;
+    case 2:
+      dirty_tracker_next( &tracker->faces );
+      break;
+    case 1:
+      dirty_tracker_next( &tracker->edges );
+      break;
+    case 0:
+      dirty_tracker_next( &tracker->verts );
+      break;
     default:
       dirty_tracker_next( &tracker->faces );
       dirty_tracker_next( &tracker->edges );
       dirty_tracker_next( &tracker->verts );
       break;
   }
+#else
+
+  switch( type )
+  {
+    case 2:
+      hashmap_reset( &tracker->facesmap );
+      break;
+    case 1:
+      hashmap_reset( &tracker->edgesmap );
+      break;
+    case 0:
+      hashmap_reset( &tracker->vertsmap );
+      break;
+    default:
+      hashmap_reset( &tracker->facesmap );
+      hashmap_reset( &tracker->edgesmap );
+      hashmap_reset( &tracker->vertsmap );
+      break;
+  }
+#endif
 }
 
 
 static INLINE void coll_geom_trace_test_tracker_flag( coll_geom_trace_test_tracker_t *tracker, size_t no, int32 type ){
+#ifdef DIRTY
   switch( type )
   {
-    case 2: dirty_tracker_clean( &tracker->faces, no ); break;
-    case 1: dirty_tracker_clean( &tracker->edges, no ); break;
+    case 2:
+      dirty_tracker_clean( &tracker->faces, no );
+      break;
+    case 1:
+      dirty_tracker_clean( &tracker->edges, no );
+      break;
     case 0:
-    default:dirty_tracker_clean( &tracker->verts, no ); break;
+    default:
+      dirty_tracker_clean( &tracker->verts, no );
+      break;
   }
+#else
+  switch( type )
+  {
+    case 2:
+      hashmap_add( &tracker->facesmap, no );
+      break;
+    case 1:
+      hashmap_add( &tracker->edgesmap, no );
+      break;
+    case 0:
+    default:
+      hashmap_add( &tracker->vertsmap, no );
+      break;
+  }
+#endif
 }
 
 static INLINE int32 coll_geom_trace_test_tracker_flagged( const coll_geom_trace_test_tracker_t *tracker, size_t no, int32 type ){
+#ifdef DIRTY
   switch( type )
   {
     case 2:  return dirty_tracker_isclean( &tracker->faces, no ); break;
@@ -153,7 +212,19 @@ static INLINE int32 coll_geom_trace_test_tracker_flagged( const coll_geom_trace_
     case 0:
     default: return dirty_tracker_isclean( &tracker->verts, no ); break;
   }
+#else
+  switch( type )
+  {
+    case 2:  return hashmap_found( &tracker->facesmap, no ); break;
+    case 1:  return hashmap_found( &tracker->edgesmap, no ); break;
+    case 0:
+    default: return hashmap_found( &tracker->vertsmap, no ); break;
+  }
+#endif
+  return 0;
 }
+
+/*
 static INLINE void coll_geom_trace_test_tracker_unflag( coll_geom_trace_test_tracker_t *tracker, size_t no, int32 type ){
   switch( type )
   {
@@ -173,6 +244,7 @@ static INLINE int32 coll_geom_trace_test_tracker_unflagged( const coll_geom_trac
     default: return dirty_tracker_isdirty2( &tracker->verts, no ); break;
   }
 }
+*/
 
 //0 for vertex hit, 1 for edge hit, 2 for face hit
 static INLINE void _coll_geom_trace_push_hit( coll_geom_trace_test_t *test, coll_hitpoint_t hit, size_t no, int32 type ){
@@ -193,18 +265,18 @@ static INLINE void _coll_geom_trace_push_hit( coll_geom_trace_test_t *test, coll
 
 #define VERT_FLAGGED( i ) coll_geom_trace_test_tracker_flagged( &test->tracker, i, 0 )
 #define FLAG_VERT( i ) coll_geom_trace_test_tracker_flag   ( &test->tracker, i, 0 )
-#define VERT_UNFLAGGED( I ) coll_geom_trace_test_tracker_unflagged( &test->tracker, i, 0 )
-#define UNFLAG_VERT( i ) coll_geom_trace_test_tracker_unflag( &test->tracker, i, 0 )
+//#define VERT_UNFLAGGED( I ) coll_geom_trace_test_tracker_unflagged( &test->tracker, i, 0 )
+//#define UNFLAG_VERT( i ) coll_geom_trace_test_tracker_unflag( &test->tracker, i, 0 )
 
 #define EDGE_FLAGGED( i ) coll_geom_trace_test_tracker_flagged( &test->tracker, i, 1 )
 #define FLAG_EDGE( i ) coll_geom_trace_test_tracker_flag   ( &test->tracker, i, 1 )
-#define EDGE_UNFLAGGED( I ) coll_geom_trace_test_tracker_unflagged( &test->tracker, i, 1 )
-#define UNFLAG_EDGE( i ) coll_geom_trace_test_tracker_unflag( &test->tracker, i, 1 )
+//#define EDGE_UNFLAGGED( I ) coll_geom_trace_test_tracker_unflagged( &test->tracker, i, 1 )
+//#define UNFLAG_EDGE( i ) coll_geom_trace_test_tracker_unflag( &test->tracker, i, 1 )
 
 #define FACE_FLAGGED( i ) coll_geom_trace_test_tracker_flagged( &test->tracker, i, 2 )
 #define FLAG_FACE( i ) coll_geom_trace_test_tracker_flag   ( &test->tracker, i, 2 );
-#define FACE_UNFLAGGED( I ) coll_geom_trace_test_tracker_unflagged( &test->tracker, i, 2 )
-#define UNFLAG_FACE( i ) coll_geom_trace_test_tracker_unflag( &test->tracker, i, 2 )
+//#define FACE_UNFLAGGED( I ) coll_geom_trace_test_tracker_unflagged( &test->tracker, i, 2 )
+//#define UNFLAG_FACE( i ) coll_geom_trace_test_tracker_unflag( &test->tracker, i, 2 )
 
 void _coll_geom_trace_gather_vert_hits( coll_geom_trace_test_t *test, const coll_geom_trace_object_t *object ){
   array_const_indirect_iter_t it = array_const_indirect_iter_init( &test->geom->verts.array,
@@ -219,9 +291,9 @@ void _coll_geom_trace_gather_vert_hits( coll_geom_trace_test_t *test, const coll
     if( !v )
       continue;
 
-    if( FACE_FLAGGED(i) )
+    if( VERT_FLAGGED(i) )
       continue;
-    //FLAG_FACE(i);  //NOTE: should we flag here, or after hit?
+    FLAG_VERT(i);  //NOTE: should we flag here, or after hit?
 
     f3copy( hit.p, v->p );
 
@@ -246,8 +318,6 @@ void _coll_geom_trace_gather_vert_hits( coll_geom_trace_test_t *test, const coll
       if( EDGE_FLAGGED(j) )
         continue; //already resolved
       const coll_edge_t *e = &test->geom->edges.elems[j];
-      if( !e )
-        continue; //should never happen...
 
       f3copy( hit.n, n );
       float proj = f3dot( hit.n, e->dir );
@@ -256,7 +326,7 @@ void _coll_geom_trace_gather_vert_hits( coll_geom_trace_test_t *test, const coll
         f3norm( hit.n );
       }
       _coll_geom_trace_push_hit( test, hit, j, 1 ); //this will flag edge
-    }
+     }
 
     //faces
     for( size_t i = 0; i < COLL_VERT_MAX_FEATS; i++ ){
@@ -266,11 +336,8 @@ void _coll_geom_trace_gather_vert_hits( coll_geom_trace_test_t *test, const coll
       if( FACE_FLAGGED(j) )
         continue;
       const coll_face_t *f = &test->geom->faces.elems[j];
-      if( !f )
-        continue; //should never happen...
-
       f3copy( hit.n, f->plane.n );
-      _coll_geom_trace_push_hit( test, hit, j, 2 );
+      _coll_geom_trace_push_hit( test, hit, j, 2 ); //this will flag face
     }
   }
 
@@ -293,7 +360,7 @@ void _coll_geom_trace_gather_edge_hits( coll_geom_trace_test_t *test, const coll
     //flagged already added to the hit list (indices & hits)
     if( EDGE_FLAGGED(i) )
       continue;
-    //FLAG_EDGE(i); //NOTE: should we flag here, or after hit?
+    FLAG_EDGE(i); //NOTE: should we flag here, or after hit?
 
     //now, only edges left to test are the ones with end points
     //not touching the object. add these edges to the hit list (indices & hits)
@@ -314,11 +381,13 @@ void _coll_geom_trace_gather_edge_hits( coll_geom_trace_test_t *test, const coll
     f3muls( hit.n, -1.0f );
     _coll_geom_trace_push_hit( test, hit, i, 1 );
 
-    f3copy( hit.n, test->geom->faces.elems[ e->faceindices[0] ].plane.n );
-    _coll_geom_trace_push_hit( test, hit, e->faceindices[0], 2 ); //this will flag face for us
-
-    f3copy( hit.n, test->geom->faces.elems[ e->faceindices[1] ].plane.n );
-    _coll_geom_trace_push_hit( test, hit, e->faceindices[1], 2 ); //this will flag face for us
+    for( size_t i = 0; i < 2; i++ ){
+      if( FACE_FLAGGED(e->faceindices[i]) )
+            continue;
+      const coll_face_t *f = &test->geom->faces.elems[e->faceindices[i] ];
+      f3copy( hit.n, f->plane.n );
+      _coll_geom_trace_push_hit( test, hit, f->index, 2 ); //this will flag face
+    }
   }
 
 }
@@ -334,9 +403,9 @@ void _coll_geom_trace_gather_face_hits( coll_geom_trace_test_t *test, const coll
 
     //faces with edges/verts making contact with object have been
     //flagged and already added to the hit list (indices & data)
-    if( FACE_FLAGGED( it.j) )
+    if( FACE_FLAGGED( f->index ) )
       continue;
-    FLAG_FACE(it.j);  //should we flag here or on hit
+    FLAG_FACE( f->index );  //should we flag here or on hit
 
     //now, only faces left to test are the ones within which the entire
     //object resides (i.e, touches face but not it's edges). add these
@@ -366,7 +435,7 @@ void _coll_geom_trace_gather_face_hits( coll_geom_trace_test_t *test, const coll
       coll_hitpoint_t hit;
       f3copy( hit.p, p );
       f3copy( hit.n, f->plane.n );
-      _coll_geom_trace_push_hit( test, hit, it.j, 2 );
+      _coll_geom_trace_push_hit( test, hit, f->index, 2 );
     }
   }
 }
@@ -378,8 +447,15 @@ void _coll_geom_trace_test_cull( coll_geom_trace_test_t *test, sphere_t sphere, 
     return;
   FLAG_FACE(index);
 
-  if( !sphere_sphere_hit( &sphere, &face->sphere ) )
+  if( !sphere_sphere_hit( &sphere, &face->sphere ) ){
+    FLAG_VERT( face->vertindices[0] );
+    FLAG_VERT( face->vertindices[1] );
+    FLAG_VERT( face->vertindices[2] );
+    FLAG_EDGE( face->edgeindices[0] );
+    FLAG_EDGE( face->edgeindices[1] );
     return;
+  }
+
   sizearray_add( &test->cull.faceindices, index );
 
   for( size_t i = 0; i < 3; i++ ){
@@ -400,6 +476,12 @@ void _coll_geom_trace_test_cull( coll_geom_trace_test_t *test, sphere_t sphere, 
 }
 
 void coll_geom_trace_test_sphere( coll_geom_trace_test_t *test, sphere_t sphere ){
+
+  const int32 write = 1;
+  FILE *fp = NULL;
+  if( write )
+    fp = fopen( "coll_geom_trace_test_sphere.txt", "w" );
+
   test->cull.vertindices.size = 0;
   test->cull.edgeindices.size = 0;
   test->cull.faceindices.size = 0;
@@ -440,14 +522,27 @@ void coll_geom_trace_test_sphere( coll_geom_trace_test_t *test, sphere_t sphere 
       _coll_geom_trace_test_cull( test, sphere, face );
     }
   }
-  /*
-  struct{
-    size_t elems[256];
-  } *dbg;
-  dbg = (void *)test->cull.faceindices.elems;
-  dbg = (void *)test->cull.edgeindices.elems;
-  dbg = (void *)test->cull.edgeindices.elems;
-  */
+
+  if( write && fp ){
+    fprintf( fp, "*** CULL ***\n");
+    fprintf( fp, "verts: %zu\n", test->cull.vertindices.size );
+    for( size_t i = 0; i < test->cull.vertindices.size; i++ ){
+      fprintf( fp, " [%zu] %zu\n", i, test->cull.vertindices.elems[i] );
+    }
+    fprintf( fp, "edges: %zu\n", test->cull.edgeindices.size );
+    for( size_t i = 0; i < test->cull.edgeindices.size; i++ ){
+      fprintf( fp, " [%zu] %zu\n", i, test->cull.edgeindices.elems[i] );
+    }
+    fprintf( fp, "faces: %zu\n", test->cull.faceindices.size );
+    for( size_t i = 0; i < test->cull.faceindices.size; i++ ){
+      fprintf( fp, " [%zu] %zu\n", i, test->cull.faceindices.elems[i] );
+    }
+  }
+
+  if( write && fp ){
+    fclose( fp );
+    fp = fopen( "coll_geom_trace_test_sphere.txt", "a" );
+  }
 
   test->hits.vertindices.size = 0;
   test->hits.edgeindices.size = 0;
@@ -460,6 +555,24 @@ void coll_geom_trace_test_sphere( coll_geom_trace_test_t *test, sphere_t sphere 
   _coll_geom_trace_gather_vert_hits( test, &obj );
   _coll_geom_trace_gather_edge_hits( test, &obj );
   _coll_geom_trace_gather_face_hits( test, &obj );
+
+  if( write && fp ){
+    fprintf( fp, "*** HITS ***\n");
+    fprintf( fp, "verts: %zu\n", test->hits.vertindices.size );
+    for( size_t i = 0; i < test->hits.vertindices.size; i++ ){
+      fprintf( fp, " [%zu] %zu\n", i, test->hits.vertindices.elems[i] );
+    }
+    fprintf( fp, "edges: %zu\n", test->hits.edgeindices.size );
+    for( size_t i = 0; i < test->hits.edgeindices.size; i++ ){
+      fprintf( fp, " [%zu] %zu\n", i, test->hits.edgeindices.elems[i] );
+    }
+    fprintf( fp, "faces: %zu\n", test->hits.faceindices.size );
+    for( size_t i = 0; i < test->hits.faceindices.size; i++ ){
+      fprintf( fp, " [%zu] %zu\n", i, test->hits.faceindices.elems[i] );
+    };
+  }
+  if( write && fp )
+    fclose( fp );
 }
 
 
@@ -488,45 +601,56 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
   coll_geom_trace_info_t info;
   memset( &info, 0, sizeof(coll_geom_trace_info_t) );
 
+  coll_geom_trace_test_tracker_reset( &test->tracker, -1 );
   //+++ RESOLVE +++//
 
   //test vertices first, dirty edges and faces if necessary
   for( size_t i = 0; i < numvs; i++ ){
-    const coll_vert_t *v  = &geom->verts.elems[ vindices[i] ];
+    const coll_vert_t *v = &geom->verts.elems[ vindices[i] ];
+    const size_t      *j = NULL;
+    /*
     size_t  nes    = 0,
             nfs    = 0;
-
     for( size_t j = 0; j < COLL_VERT_MAX_FEATS; j++ ){
       if( -1 != v->edgeindices[j] )
         nes++;
       if( -1 != v->faceindices[j] )
         nfs++;
     }
+    */
 
     //dirty all edges (assume we wont need to test)
-    for( size_t j = 0; j < nes; j++ )
-      UNFLAG_EDGE( v->edgeindices[j] >> 1 );
+    //for( size_t j = 0; j < nes; j++ )
+    //  UNFLAG_EDGE( v->edgeindices[j] >> 1 );
 
     //dirty all faces (assume we wont need to test)
-    for( size_t j = 0; j < nfs; j++ )
-      UNFLAG_FACE( v->faceindices[j] );
+    //for( size_t j = 0; j < nfs; j++ )
+    //  UNFLAG_FACE( v->faceindices[j] );
 
     int32 within = 1;
-    for( size_t j = 0; j < nes; j++ ){
-      size_t k   = v->edgeindices[j] >> 1;
-      int32 flip = v->edgeindices[j] &  0b01;
+
+    j = v->edgeindices;
+    while( (*j) != -1 ){
+      size_t k   = (*j) >> 1;
+      int32 flip = (*j) &  0b01;
       const coll_edge_t *e = &geom->edges.elems[k];
       if( coll_edge_inside_voronoi( e, vhits[i].n, flip ) ){
         within = 0;
-        //clean this edge and its faces to allow testing (assumption wrong). the test
-        //will populate traceinfo.
-        FLAG_EDGE( k );
-        FLAG_FACE( e->faceindices[0] );
-        FLAG_FACE( e->faceindices[1] );
       }
+      j++;
     }
     if( !within )
       continue;
+
+    j = v->edgeindices;
+    while( (*j) != -1 ){
+      size_t k   = (*j) >> 1;
+      FLAG_EDGE( k );
+      const coll_edge_t *e = &geom->edges.elems[k];
+      FLAG_FACE( e->faceindices[0] );
+      FLAG_FACE( e->faceindices[1] );
+      j++;
+    }
 
     info.type    = 4;
     info.feat_no = v->index;
@@ -536,9 +660,9 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
 
     float ddotn = f3dot( dir, info.n );
     if( ddotn < 0.0f ){
-      if( ddotn > test->penetrating_dist )
+      if( ddotn < test->penetrating_dist )
         test->penetrating_dist = ddotn;
-      f3madd( dir, -ddotn * 1.001f, vhits[i].n );
+      f3madd( dir, -ddotn * 1.003f, vhits[i].n );
       test->penetrating++;
     }
   }
@@ -546,7 +670,7 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
   //test clean edges next, dirty faces if necessary (assuming wont test)
   for( size_t i = 0; i < numes; i++ ){
     const coll_edge_t *e  = &geom->edges.elems[ eindices[i] ];
-    if( FACE_UNFLAGGED( eindices[i] ) )
+    if( EDGE_FLAGGED( eindices[i] ) )
       continue;
 
     const coll_face_t *f0 = &geom->faces.elems[ e->faceindices[0] ];
@@ -554,13 +678,14 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
     if( e->convex < 0 || NULL == f1 )
       continue;
 
-    UNFLAG_FACE( e->faceindices[0] );
-    UNFLAG_FACE( e->faceindices[1] );
+    //these faces are tested in the test below, so flag them
+    FLAG_FACE( e->faceindices[0] );
+    FLAG_FACE( e->faceindices[1] );
 
     float3 n = { 0.0f, 0.0f, 0.0f };
     if( e->convex > 0 ){
-      if( f3dot( ehits[i].n, f0->plane.n ) > 0.0f &&
-          f3dot( ehits[i].n,  e->vs[0]   ) < 0.0f ){
+      if( f3dot( ehits[i].n, f0->plane.n ) >= 0.0f &&
+          f3dot( ehits[i].n,  e->vs[0]   ) <= 0.0f ){
         f3copy( n, f0->plane.n );
         info.type    = 1;
         info.feat_no = f0->index;
@@ -568,8 +693,8 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
         f3copy( info.p, ehits[i].p );
       }
       else
-      if( f3dot( ehits[i].n, f1->plane.n ) > 0.0f &&
-          f3dot( ehits[i].n,  e->vs[1]   ) < 0.0f ){
+      if( f3dot( ehits[i].n, f1->plane.n ) >= 0.0f &&
+          f3dot( ehits[i].n,  e->vs[1]   ) <= 0.0f ){
         f3copy( n, f1->plane.n );
         info.type    = 2;
         info.feat_no = f1->index;
@@ -597,35 +722,36 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
     if( ddotn < 0.0f ){
       if( ddotn > test->penetrating_dist )
         test->penetrating_dist = ddotn;
-      f3madd( dir, -ddotn * 1.001f, n );
+      f3madd( dir, -ddotn * 1.003f, n );
       test->penetrating++;
     }
   }
 
-  //test clean faces last
+  //test faces not flagged last
   for( size_t i = 0; i < numfs; i++ ){
     const coll_face_t *f = &geom->faces.elems[ findices[i] ];
-    if( FACE_UNFLAGGED( findices[i] ) )
+    if( FACE_FLAGGED( findices[i] ) )
       continue;
 
     float ddotn = f3dot( dir, f->plane.n );
     if( ddotn < 0.0f ){
       if( ddotn > test->penetrating_dist )
         test->penetrating_dist = ddotn;
-      f3madd( dir, -ddotn * 1.001f, f->plane.n );
+      f3madd( dir, -ddotn * 1.003f, f->plane.n );
       test->penetrating++;
+      info.type    = 3;
+      info.feat_no = findices[i];
+      f3copy( info.n, fhits[i].n );
+      f3copy( info.p, fhits[i].p );
+      collgeomtracearray_new( &test->traceinfos, &info );
     }
-    info.type    = 3;
-    info.feat_no = findices[i];
-    f3copy( info.n, fhits[i].n );
-    f3copy( info.p, fhits[i].p );
-    collgeomtracearray_new( &test->traceinfos, &info );
   }
 
   coll_geom_trace_info_t *infos    = test->traceinfos.elems;
   size_t                  numinfos = test->traceinfos.size;
   for( size_t i = 0; i < numinfos; i++ ){
-    if( f3dot( dir, infos[i].n ) < 0.0f ){
+    float dot = f3dot( dir, infos[i].n );
+    if( dot < -1e-9 ){
       test->stuck = 1;
       break;
     }
@@ -641,11 +767,13 @@ void coll_geom_trace( coll_geom_trace_test_t *test, float3 dir ){
           continue;
 
         int32 bad = 0;
-        for( size_t k = 0; k < numinfos; k++ )
-          if( f3dot( infos[k].n, d ) < 0.0f ){
+        for( size_t k = 0; k < numinfos; k++ ){
+          float dot = f3dot( infos[k].n, d );
+          if( dot < -2e-9f ){ //in a particular test, this value was -4e-12.. SMH
             bad++;
             break;
           }
+        }
         if( bad )
           continue;
 

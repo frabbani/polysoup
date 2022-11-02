@@ -136,7 +136,7 @@ size_t array_index( array_t *array, const void *data, int (*equal)(const void *,
 }
 
 
-void *array_add_ifdne( array_t *array, const void *data, int (*equal)(const void *, const void *), size_t *index ){
+void *array_add_ifdne0( array_t *array, const void *data, int (*equal)(const void *, const void *), size_t *index ){
  size_t pos = array_index( array, data, equal );
   if( -1 != pos ){
     if( index )
@@ -150,6 +150,29 @@ void *array_add_ifdne( array_t *array, const void *data, int (*equal)(const void
   return added;
 }
 
+void *array_add_ifdne( array_t *array, const void *data, size_t *index ){
+  comparator_t comp_func = get_compare_func( array->_typeof );
+  if( !comp_func ){
+    return array_add0( array, data, index, __FUNCTION__, __LINE__ );
+  }
+ size_t n = array->size;
+ size_t pos  = 0;
+ while( n >= 1 ){
+   pos = n - 1;
+   void *elem = array_data( array, pos );
+   if( 0 == comp_func( elem, data ) ){
+     if( index )
+       *index = pos;
+     return elem;
+   }
+   n--;
+ }
+
+  void *added = array_add( array, data, &pos );
+  if( index )
+    *index = pos;
+  return added;
+}
 
 size_t _array_binsrch( array_t *array, const void *data, comparator_t compare, size_t l, size_t r ){
   if( l == r )

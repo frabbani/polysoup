@@ -6,11 +6,13 @@
 
 static hash_t hashpool[ HASH_POOL_SIZE ];
 
+static size_t hash_additions = 0;
+static size_t hash_collisions = 0;
 
 static hash_t *hashpool_new( size_t val ){
   static size_t index = 0;
   index = (index+1) % HASH_POOL_SIZE;
-  hash_t *hash = &hashpool[index++];
+  hash_t *hash = &hashpool[index];
   hash->val  = val;
   hash->next = NULL;
   return hash;
@@ -56,6 +58,7 @@ int32 hashmap_add( hashmap_t *map, size_t val ){
     map->hashes[i].val  = val;
     map->hashes[i].next = NULL;
     map->test[i] = map->bool;
+    hash_additions++;
     return 0;
   }
   hash_t *hash = &map->hashes[i];
@@ -67,7 +70,7 @@ int32 hashmap_add( hashmap_t *map, size_t val ){
       return 0;
     hash = hash->next;
   }
-
+  hash_collisions++;
   hash->next = hashpool_new( val );
   return 1;
 
@@ -121,4 +124,11 @@ int32 hashmap_found( const hashmap_t *map, size_t val ){
   }
 
   return 0;
+}
+
+float hash_collisions_rate(){
+  if( !hash_additions )
+    return 0.0f;
+  double rate = (double)hash_collisions / (double)hash_additions;
+  return (float)rate;
 }
